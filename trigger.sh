@@ -5,7 +5,7 @@ host=exim
 port=25
 sender=journald@sr-server.home.annekov.com
 to=paul.annekov@gmail.com
-tail -f $log |
+cat |
 grep --line-buffered "$match" |
 while read line
 do
