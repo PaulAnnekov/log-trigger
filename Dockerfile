@@ -4,7 +4,7 @@ FROM ubuntu:16.04
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update
-RUN apt-get -qqy install heirloom-mailx
+RUN apt-get -qqy install heirloom-mailx jq
 
 ADD trigger.sh /usr/bin
 
