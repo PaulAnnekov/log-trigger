@@ -52,9 +52,17 @@ def send_email(title, text):
 
 init_logging()
 
+def is_ignore(info):
+    return info['CONTAINER_NAME'] in ['owncloud_mysql']
+
+def is_error():
+    return int(info['PRIORITY']) <= 3
+
 for line in sys.stdin:
     info = json.loads(line)
-    if int(info['PRIORITY']) > 3:
+    if is_ignore(info):
+        continue
+    if not is_error():
         continue
     send_email('Error on %s in container "%s"' % (info['_HOSTNAME'], info['CONTAINER_NAME']), "Error:\n%s" %
        info['MESSAGE'])
