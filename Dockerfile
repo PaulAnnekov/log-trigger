@@ -4,8 +4,9 @@ FROM ubuntu:16.04
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update
-RUN apt-get -qqy install heirloom-mailx jq
+RUN apt-get -qqy install python
 
-ADD trigger.sh /usr/bin
+ADD trigger.py /usr/local/bin
 
-CMD /usr/bin/trigger.sh
+# Flush buffered "print", will output stdout immediately
+CMD PYTHONUNBUFFERED="1" /usr/local/bin/trigger.py
