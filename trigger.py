@@ -53,7 +53,7 @@ def send_email(title, text):
 init_logging()
 
 def is_ignore(info):
-    return info['CONTAINER_NAME'] in ['owncloud_mysql']
+    return 'CONTAINER_NAME' not in info or info['CONTAINER_NAME'] in ['owncloud_mysql']
 
 def is_error():
     return int(info['PRIORITY']) <= 3
