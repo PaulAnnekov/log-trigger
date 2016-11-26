@@ -34,8 +34,6 @@ def init_logging():
     logger.addHandler(h2)
 
 def send_email(title, text):
-    print title
-    print text
     msg = MIMEText(text)
     msg['Subject'] = title
     msg['From'] = 'Log trigger <%s>' % sender
