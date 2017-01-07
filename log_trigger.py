@@ -1,11 +1,6 @@
 #!/usr/bin/env python
-import sys, json, logging, smtplib
+import sys, json, logging, smtplib, ConfigParser
 from email.mime.text import MIMEText
-
-email_host = 'exim'
-email_port = 25
-sender = 'journald@sr-server.home.annekov.com'
-to = 'paul.annekov@gmail.com'
 
 logger = None
 
@@ -55,6 +50,14 @@ def is_ignore(info):
 
 def is_error():
     return int(info['PRIORITY']) <= 3
+
+config = ConfigParser.ConfigParser()
+config.read(sys.argv[1])
+mail_config = dict(config.items('Mail'))
+sender = mail_config['sender']
+to = mail_config['to']
+email_host = 'exim'
+email_port = 25
 
 for line in sys.stdin:
     info = json.loads(line)
