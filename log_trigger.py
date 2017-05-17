@@ -51,7 +51,7 @@ init_logging()
 def is_ignore(info):
     if info['CONTAINER_NAME'] in ['log-trigger']:
         return True
-    if not any(marker in info['MESSAGE'].lower() for marker in ['error', 'exception', 'unexpected']):
+    if not any(marker in info['MESSAGE'].lower() for marker in ['error', 'exception', 'unexpected', 'failed']):
         return True
     return False
 
