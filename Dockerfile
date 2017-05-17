@@ -4,7 +4,7 @@ FROM ubuntu:16.04
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update
-RUN apt-get -qqy install python
+RUN apt-get -qqy install python3
 
 ADD log_trigger.py /usr/local/bin
 ADD log_trigger.conf /etc/log_trigger/log_trigger.conf
