@@ -1,9 +1,8 @@
-#!/usr/bin/env python
-import sys, json, logging, smtplib, ConfigParser, re
+#!/usr/bin/env python3
+import sys, json, logging, smtplib, configparser, re
 from email.mime.text import MIMEText
 
 logger = None
-byte_array_pattern = re.compile("^\[ (\d+, )*\d+ \]$")
 ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
 
 def init_logging():
@@ -50,21 +49,21 @@ init_logging()
 
 
 def is_ignore(info):
-    return 'CONTAINER_NAME' not in info or info['CONTAINER_NAME'] in ['owncloud_mysql']
-
-
-def is_error():
-    return int(info['PRIORITY']) <= 3
-
+    if info['CONTAINER_NAME'] in ['log-trigger']:
+        return True
+    if not any(marker in info['MESSAGE'].lower() for marker in ['error', 'exception', 'unexpected']):
+        return True
+    return False
 
 def parse(info):
+    if not isinstance(info['MESSAGE'], list):
+        return info
     # journald converts message to utf-8 byte array, if it was coloured output from program
     # convert it back to utf-8 string + remove colour codes
-    if byte_array_pattern.match(info['MESSAGE']):
-        info['MESSAGE'] = ansi_escape.sub('', bytes(info['MESSAGE']).decode('utf-8'))
+    info['MESSAGE'] = ansi_escape.sub('', bytes(info['MESSAGE']).decode('utf-8'))
     return info
 
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 config.read(sys.argv[1])
 mail_config = dict(config.items('Mail'))
 sender = mail_config['sender']
@@ -74,10 +73,11 @@ email_port = 25
 
 for line in sys.stdin:
     info = json.loads(line)
-    if is_ignore(info):
-        continue
-    if not is_error():
+    if 'CONTAINER_NAME' not in info:
         continue
     info = parse(info)
+    if is_ignore(info):
+        continue
+    logger.info('Error in container "%s": "%s"' % (info['CONTAINER_NAME'], info['MESSAGE']))
     send_email('Error on %s in container "%s"' % (info['_HOSTNAME'], info['CONTAINER_NAME']), "Error:\n%s" %
        info['MESSAGE'])
