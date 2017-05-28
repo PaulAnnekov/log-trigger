@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
-import sys, json, logging, smtplib, configparser, re
+import sys, json, logging, smtplib, configparser, re, fnmatch
 from email.mime.text import MIMEText
 
 logger = None
 ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
+# https://stackoverflow.com/questions/2595119/python-glob-and-bracket-characters
+ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.padavan_tracker[]] Can't get connected "
+                                         "clients: Can't connect to router: HTTPConnectionPool(host='192.168.0.21', "
+                                         "port=80): Max retries exceeded with url: /Main_WStatus2g_Content.asp (Caused "
+                                         "by ConnectTimeoutError(<requests.packages.urllib3.connection.HTTPConnection "
+                                         "object at *>, 'Connection to 192.168.0.21 timed out. "
+                                         "(connect timeout=1)'))*"]}
 
 def init_logging():
     global logger
@@ -53,6 +60,10 @@ def is_ignore(info):
         return True
     if not any(marker in info['MESSAGE'].lower() for marker in ['error', 'exception', 'unexpected', 'failed']):
         return True
+    for container in ignore:
+        for error in ignore[container]:
+            if fnmatch.fnmatch(info['MESSAGE'], error):
+                return True
     return False
 
 def parse(info):
