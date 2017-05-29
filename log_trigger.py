@@ -7,7 +7,7 @@ ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
 # https://stackoverflow.com/questions/2595119/python-glob-and-bracket-characters
 ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.padavan_tracker[]] Can't get connected "
                                          "clients: Can't connect to router: HTTPConnectionPool(host='192.168.0.21', "
-                                         "port=80): Max retries exceeded with url: /Main_WStatus2g_Content.asp (Caused "
+                                         "port=80): Max retries exceeded with url: /Main_WStatus*_Content.asp (Caused "
                                          "by ConnectTimeoutError(<requests.packages.urllib3.connection.HTTPConnection "
                                          "object at *>, 'Connection to 192.168.0.21 timed out. "
                                          "(connect timeout=1)'))*"]}
