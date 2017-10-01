@@ -63,7 +63,9 @@ init_logging()
 def is_ignore(info):
     if info['CONTAINER_NAME'] in ['log-trigger']:
         return True
-    if not any(marker in info['MESSAGE'].lower() for marker in ['error', 'exception', 'unexpected', 'failed']):
+    # [WRN] and [ERR] are statuses of motion.log
+    if not any(marker in info['MESSAGE'].lower() for marker in ['error', 'exception', 'unexpected', 'failed',
+                                                                '[wrn]', '[err]']):
         return True
     for container in ignore:
         for error in ignore[container]:
