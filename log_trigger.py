@@ -65,7 +65,7 @@ def is_ignore(info):
         return True
     # [WRN] and [ERR] are statuses of motion.log
     if not any(marker in info['MESSAGE'].lower() for marker in ['error', 'exception', 'unexpected', 'failed',
-                                                                '[wrn]', '[err]']):
+                                                                '[wrn]', '[err]', 'warning']):
         return True
     for container in ignore:
         for error in ignore[container]:
