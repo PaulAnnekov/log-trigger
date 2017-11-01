@@ -14,7 +14,8 @@ ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.p
                                          "*[[]custom_components.device_tracker.padavan_tracker[]] Can't get connected "
                                          "clients: Some error during request: HTTPConnectionPool(host='192.168.0.21', "
                                          "port=80): Read timed out. (read timeout=1)*",
-                                         "*[[]roomba.roomba.Roomba[]]*\"error\":0,*"]}
+                                         "*[[]roomba.roomba.Roomba[]]*\"error\":0,*"],
+          'fail2ban': ["*fail2ban.actions: WARNING * Ban *"]}
 
 
 def init_logging():
