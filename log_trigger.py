@@ -16,7 +16,8 @@ ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.p
                                          "port=80): Read timed out. (read timeout=1)*",
                                          "*[[]roomba.roomba.Roomba[]]*\"error\":0,*"],
           'fail2ban': ["*fail2ban.actions: WARNING * Ban *"]}
-
+# [nginx-404] Ignore 192.168.0.10 by ip
+per_container = {'fail2ban': ['] Ignore ']}
 
 def init_logging():
     global logger
@@ -64,6 +65,10 @@ init_logging()
 def is_ignore(info):
     if info['CONTAINER_NAME'] in ['log-trigger']:
         return True
+    for container in per_container:
+        for string in per_container[container]:
+            if string in info['MESSAGE']:
+                return False
     # [WRN] and [ERR] are statuses of motion.log
     if not any(marker in info['MESSAGE'].lower() for marker in ['error', 'exception', 'unexpected', 'failed',
                                                                 '[wrn]', '[err]', 'warning']):
