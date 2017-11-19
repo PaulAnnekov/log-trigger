@@ -14,7 +14,11 @@ ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.p
                                          "*[[]custom_components.device_tracker.padavan_tracker[]] Can't get connected "
                                          "clients: Some error during request: HTTPConnectionPool(host='192.168.0.21', "
                                          "port=80): Read timed out. (read timeout=1)*",
-                                         "*[[]roomba.roomba.Roomba[]]*\"error\":0,*"],
+                                         "*[[]roomba.roomba.Roomba[]]*\"error\":0,*",
+                                         "*[[]homeassistant.helpers.entity[]] Update of * is taking over 10 seconds",
+                                         "*[[]PyXiaomiGateway[]] No data in response from hub None",
+                                         "*[[]PyXiaomiGateway[]] Non matching response. Expecting read_ack, but got write_ack",
+                                         "*[[]PyXiaomiGateway[]] Non matching response. Expecting write_ack, but got read_ack"],
           'fail2ban': ["*fail2ban.actions: WARNING * Ban *"]}
 # [nginx-404] Ignore 192.168.0.10 by ip
 per_container = {'fail2ban': ['] Ignore ']}
