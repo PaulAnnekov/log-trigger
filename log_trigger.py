@@ -21,7 +21,7 @@ ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.p
                                          "*[[]PyXiaomiGateway[]] Non matching response. Expecting write_ack, but got read_ack"],
           'fail2ban': ["*fail2ban.actions: WARNING * Ban *"]}
 # [nginx-404] Ignore 192.168.0.10 by ip
-per_container = {'fail2ban': ['] Ignore ']}
+include = {'fail2ban': ['] Ignore ']}
 
 def init_logging():
     global logger
@@ -69,8 +69,8 @@ init_logging()
 def is_ignore(info):
     if info['CONTAINER_NAME'] in ['log-trigger']:
         return True
-    for container in per_container:
-        for string in per_container[container]:
+    for container in include:
+        for string in include[container]:
             if string in info['MESSAGE']:
                 return False
     # [WRN] and [ERR] are statuses of motion.log
