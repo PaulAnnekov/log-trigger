@@ -22,6 +22,7 @@ ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.p
           'fail2ban': ["*fail2ban.actions: WARNING * Ban *"]}
 # [nginx-404] Ignore 192.168.0.10 by ip
 include = {'fail2ban': ['] Ignore ']}
+syslog_identifiers = ['duplicity']
 
 def init_logging():
     global logger
@@ -102,6 +103,8 @@ email_port = 25
 
 for line in sys.stdin:
     info = json.loads(line)
+    if info.get('SYSLOG_IDENTIFIER') in syslog_identifiers:
+       info['CONTAINER_NAME'] = info['SYSLOG_IDENTIFIER']
     if 'CONTAINER_NAME' not in info:
         continue
     info = parse(info)
@@ -110,3 +113,4 @@ for line in sys.stdin:
     logger.info('Error in container "%s": "%s"' % (info['CONTAINER_NAME'], info['MESSAGE']))
     send_email('Error on %s in container "%s"' % (info['_HOSTNAME'], info['CONTAINER_NAME']), "Error:\n%s" %
        info['MESSAGE'])
+
