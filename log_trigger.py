@@ -19,7 +19,8 @@ ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.p
                                          "*[[]PyXiaomiGateway[]] No data in response from hub None",
                                          "*[[]PyXiaomiGateway[]] Non matching response. Expecting read_ack, but got write_ack",
                                          "*[[]PyXiaomiGateway[]] Non matching response. Expecting write_ack, but got read_ack",
-                                         "*[[]homeassistant.components.http[]] Serving /api/error/all to*"],
+                                         "*[[]homeassistant.components.http[]] Serving /api/error/all to*",
+                                         "*[[]homeassistant.components.emulated_hue[]] When targeting Google Home, listening port has to be port 80"],
           'fail2ban': ["*fail2ban.actions: WARNING * Ban *"]}
 # [nginx-404] Ignore 192.168.0.10 by ip
 include = {'fail2ban': ['] Ignore ']}
