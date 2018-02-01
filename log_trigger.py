@@ -26,7 +26,8 @@ ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.p
                                          "*[[]xiaomi_gateway[]] No data in response from hub None",
                                          "*[[]xiaomi_gateway[]] Cannot connect to Gateway",
                                          "*[[]xiaomi_gateway[]] Non matching response. Expecting write_ack, but got read_ack",
-                                         "*[[]xiaomi_gateway[]] Non matching response. Expecting read_ack, but got write_ack"],
+                                         "*[[]xiaomi_gateway[]] Non matching response. Expecting read_ack, but got write_ack",
+                                         "*[[]homeassistant.core[]] Bus:Handling <Event call_service[[]L[]]: domain=mqtt, service=publish, service_data=topic=home-assistant/system_log_event, *"],
           'fail2ban': ["*fail2ban.actions: WARNING * Ban *"]}
 # [nginx-404] Ignore 192.168.0.10 by ip
 include = {'fail2ban': ['] Ignore ']}
