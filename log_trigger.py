@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import sys, json, logging, smtplib, configparser, re, fnmatch
+import sys, json, logging, smtplib, configparser, re, fnmatch, time, os
 from email.mime.text import MIMEText
 
 logger = None
@@ -33,6 +33,8 @@ ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.p
 # [nginx-404] Ignore 192.168.0.10 by ip
 include = {'fail2ban': ['] Ignore ']}
 syslog_identifiers = ['duplicity']
+files_base = '/var/log/log-trigger/'
+files = ['asterisk_sms.log']
 
 def init_logging():
     global logger
@@ -74,8 +76,6 @@ def send_email(title, text):
             server.quit()
         logger.error('Failed to send email: \n%s. %s', sys.exc_info()[0], sys.exc_info()[1])
 
-init_logging()
-
 
 def is_ignore(info):
     if info['CONTAINER_NAME'] in ['log-trigger']:
@@ -103,6 +103,26 @@ def parse(info):
     info['MESSAGE'] = ansi_escape.sub('', bytes(info['MESSAGE']).decode('utf-8'))
     return info
 
+
+def watch_file(filename):
+    file = open(files_base + filename, 'r', errors='replace')
+
+    file.seek(0, os.SEEK_END)
+
+    while 1:
+        where = file.tell()
+        line = file.readline()
+        if not line:
+            time.sleep(1)
+            file.seek(where)
+        else:
+            line = line.rstrip('\n')
+            logger.info('New log in "%s": "%s"' % (filename, line))
+            send_email('New log in file "%s"' % filename, line)
+
+
+init_logging()
+
 config = configparser.ConfigParser()
 config.read(sys.argv[1])
 mail_config = dict(config.items('Mail'))
@@ -111,6 +131,11 @@ to = mail_config['to']
 email_host = 'exim'
 email_port = 25
 
+# Watch files
+for path in files:
+    watch_file(path)
+
+# Watch journald
 for line in sys.stdin:
     info = json.loads(line)
     if info.get('SYSLOG_IDENTIFIER') in syslog_identifiers:
@@ -123,4 +148,3 @@ for line in sys.stdin:
     logger.info('Error in container "%s": "%s"' % (info['CONTAINER_NAME'], info['MESSAGE']))
     send_email('Error on %s in container "%s"' % (info['_HOSTNAME'], info['CONTAINER_NAME']), "Error:\n%s" %
        info['MESSAGE'])
-
