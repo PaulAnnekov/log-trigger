@@ -1,35 +1,44 @@
 #!/usr/bin/env python3
-import sys, json, logging, smtplib, configparser, re, fnmatch, time, os
+import sys, json, logging, smtplib, configparser, re, fnmatch, time, os, asyncio
 from email.mime.text import MIMEText
 
 logger = None
+
+config = configparser.ConfigParser()
+config.read(sys.argv[1])
+mail_config = dict(config.items('Mail'))
+sender = mail_config['sender']
+to = mail_config['to']
+email_host = 'exim'
+email_port = 25
+
 ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
 # https://stackoverflow.com/questions/2595119/python-glob-and-bracket-characters
 ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.padavan_tracker[]] Can't get connected "
-                                         "clients: Can't connect to router: HTTPConnectionPool(host='192.168.0.21', "
-                                         "port=80): Max retries exceeded with url: /Main_WStatus*_Content.asp (Caused "
-                                         "by ConnectTimeoutError(<requests.packages.urllib3.connection.HTTPConnection "
-                                         "object at *>, 'Connection to 192.168.0.21 timed out. "
-                                         "(connect timeout=1)'))*",
-                                         "*[[]custom_components.device_tracker.padavan_tracker[]] Can't get connected "
-                                         "clients: Some error during request: HTTPConnectionPool(host='192.168.0.21', "
-                                         "port=80): Read timed out. (read timeout=1)*",
-                                         "*[[]roomba.roomba.Roomba[]]*\"error\":0,*",
-                                         "*[[]homeassistant.helpers.entity[]] Update of * is taking over 10 seconds",
-                                         "*[[]PyXiaomiGateway[]] No data in response from hub None",
-                                         "*[[]PyXiaomiGateway[]] Non matching response. Expecting read_ack, but got write_ack",
-                                         "*[[]PyXiaomiGateway[]] Non matching response. Expecting write_ack, but got read_ack",
-                                         "*[[]homeassistant.components.http[]] Serving /api/error/all to*",
-                                         "*[[]homeassistant.components.emulated_hue[]] When targeting Google Home, listening port has to be port 80",
-                                         "*[[]homeassistant.components.recorder[]] Ended unfinished session (*)",
-                                         "*[[]homeassistant.components.updater[]] Running on 'dev', only analytics will be submitted",
-                                         "*[[]xiaomi_gateway[]] No data in response from hub None",
-                                         "*[[]xiaomi_gateway[]] Cannot connect to Gateway",
-                                         "*[[]xiaomi_gateway[]] Non matching response. Expecting write_ack, but got read_ack",
-                                         "*[[]xiaomi_gateway[]] Non matching response. Expecting read_ack, but got write_ack",
-                                         # Ignore system_log_event event and mqtt service which sends this event to mqtt server
-                                         "*[[]homeassistant.core[]] Bus:Handling <Event *system_log_event*"],
-          'fail2ban': ["*fail2ban.actions: WARNING * Ban *"]}
+                                        "clients: Can't connect to router: HTTPConnectionPool(host='192.168.0.21', "
+                                        "port=80): Max retries exceeded with url: /Main_WStatus*_Content.asp (Caused "
+                                        "by ConnectTimeoutError(<requests.packages.urllib3.connection.HTTPConnection "
+                                        "object at *>, 'Connection to 192.168.0.21 timed out. "
+                                        "(connect timeout=1)'))*",
+                                        "*[[]custom_components.device_tracker.padavan_tracker[]] Can't get connected "
+                                        "clients: Some error during request: HTTPConnectionPool(host='192.168.0.21', "
+                                        "port=80): Read timed out. (read timeout=1)*",
+                                        "*[[]roomba.roomba.Roomba[]]*\"error\":0,*",
+                                        "*[[]homeassistant.helpers.entity[]] Update of * is taking over 10 seconds",
+                                        "*[[]PyXiaomiGateway[]] No data in response from hub None",
+                                        "*[[]PyXiaomiGateway[]] Non matching response. Expecting read_ack, but got write_ack",
+                                        "*[[]PyXiaomiGateway[]] Non matching response. Expecting write_ack, but got read_ack",
+                                        "*[[]homeassistant.components.http[]] Serving /api/error/all to*",
+                                        "*[[]homeassistant.components.emulated_hue[]] When targeting Google Home, listening port has to be port 80",
+                                        "*[[]homeassistant.components.recorder[]] Ended unfinished session (*)",
+                                        "*[[]homeassistant.components.updater[]] Running on 'dev', only analytics will be submitted",
+                                        "*[[]xiaomi_gateway[]] No data in response from hub None",
+                                        "*[[]xiaomi_gateway[]] Cannot connect to Gateway",
+                                        "*[[]xiaomi_gateway[]] Non matching response. Expecting write_ack, but got read_ack",
+                                        "*[[]xiaomi_gateway[]] Non matching response. Expecting read_ack, but got write_ack",
+                                        # Ignore system_log_event event and mqtt service which sends this event to mqtt server
+                                        "*[[]homeassistant.core[]] Bus:Handling <Event *system_log_event*"],
+        'fail2ban': ["*fail2ban.actions: WARNING * Ban *"]}
 # [nginx-404] Ignore 192.168.0.10 by ip
 include = {'fail2ban': ['] Ignore ']}
 syslog_identifiers = ['duplicity']
@@ -103,48 +112,51 @@ def parse(info):
     info['MESSAGE'] = ansi_escape.sub('', bytes(info['MESSAGE']).decode('utf-8'))
     return info
 
-
-def watch_file(filename):
-    file = open(files_base + filename, 'r', errors='replace')
-
-    file.seek(0, os.SEEK_END)
-
-    while 1:
-        where = file.tell()
-        line = file.readline()
+async def watch_file(path):
+    logger.info('Track file: %s' % path)
+    f = open(files_base + path, mode='r', errors='replace')
+    f.seek(0, os.SEEK_END)
+    while True:
+        line = f.readline()
         if not line:
-            time.sleep(1)
-            file.seek(where)
-        else:
-            line = line.rstrip('\n')
-            logger.info('New log in "%s": "%s"' % (filename, line))
-            send_email('New log in file "%s"' % filename, line)
+            await asyncio.sleep(1)
+            continue
+        line = line.rstrip('\n')
+        logger.info('New log in "%s": "%s"' % (path, line))
+        send_email('New log in file "%s"' % path, line)
 
+async def watch_files():
+    futures = []
+    for path in files:
+        futures.append(watch_file(path))
 
-init_logging()
+    await asyncio.wait(futures)
 
-config = configparser.ConfigParser()
-config.read(sys.argv[1])
-mail_config = dict(config.items('Mail'))
-sender = mail_config['sender']
-to = mail_config['to']
-email_host = 'exim'
-email_port = 25
-
-# Watch files
-for path in files:
-    watch_file(path)
-
-# Watch journald
-for line in sys.stdin:
+def journald_reader():
+    line = sys.stdin.readline()
     info = json.loads(line)
     if info.get('SYSLOG_IDENTIFIER') in syslog_identifiers:
-       info['CONTAINER_NAME'] = info['SYSLOG_IDENTIFIER']
+        info['CONTAINER_NAME'] = info['SYSLOG_IDENTIFIER']
     if 'CONTAINER_NAME' not in info:
-        continue
+        return
     info = parse(info)
     if is_ignore(info):
-        continue
+        return
     logger.info('Error in container "%s": "%s"' % (info['CONTAINER_NAME'], info['MESSAGE']))
     send_email('Error on %s in container "%s"' % (info['_HOSTNAME'], info['CONTAINER_NAME']), "Error:\n%s" %
-       info['MESSAGE'])
+    info['MESSAGE'])
+
+def main():
+    init_logging()
+
+    loop = asyncio.get_event_loop()
+
+    # Watch journald
+    loop.add_reader(sys.stdin.fileno(), journald_reader)
+
+    # Watch files
+    loop.run_until_complete(watch_files())
+
+    loop.close()
+
+main()
