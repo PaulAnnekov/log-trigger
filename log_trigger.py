@@ -9,7 +9,7 @@ config.read(sys.argv[1])
 mail_config = dict(config.items('Mail'))
 sender = mail_config['sender']
 to = mail_config['to']
-email_host = 'exim'
+email_host = 'mail'
 email_port = 25
 
 ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
@@ -38,7 +38,8 @@ ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.p
                                         "*[[]xiaomi_gateway[]] Non matching response. Expecting read_ack, but got write_ack",
                                         # Ignore system_log_event event and mqtt service which sends this event to mqtt server
                                         "*[[]homeassistant.core[]] Bus:Handling <Event *system_log_event*"],
-        'fail2ban': ["*fail2ban.actions: WARNING * Ban *"]}
+        'fail2ban': ["*fail2ban.actions: WARNING * Ban *"],
+        'mail': ["*Received mail from '*' for '*' with subject '*"]}
 # [nginx-404] Ignore 192.168.0.10 by ip
 include = {'fail2ban': ['] Ignore ']}
 syslog_identifiers = ['duplicity']
@@ -143,7 +144,7 @@ def journald_reader():
     if is_ignore(info):
         return
     logger.info('Error in container "%s": "%s"' % (info['CONTAINER_NAME'], info['MESSAGE']))
-    send_email('Error on %s in container "%s"' % (info['_HOSTNAME'], info['CONTAINER_NAME']), "Error:\n%s" %
+    send_email('Error on %s in container "%s"' % (info['_HOSTNAME'], info['CONTAINER_NAME']), "```\n%s\n```" %
     info['MESSAGE'])
 
 def main():
