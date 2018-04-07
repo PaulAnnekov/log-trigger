@@ -37,7 +37,10 @@ ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.p
                                         "*[[]xiaomi_gateway[]] Non matching response. Expecting write_ack, but got read_ack",
                                         "*[[]xiaomi_gateway[]] Non matching response. Expecting read_ack, but got write_ack",
                                         # Ignore system_log_event event and mqtt service which sends this event to mqtt server
-                                        "*[[]homeassistant.core[]] Bus:Handling <Event *system_log_event*"],
+                                        "*[[]homeassistant.core[]] Bus:Handling <Event *system_log_event*",
+                                        "*[[]homeassistant.core[]] Bus:Handling <Event *zwave.*sentFailed*",
+                                        "*[[]homeassistant.core[]] Bus:Handling <Event *zwave*remove_failed_node*",
+                                        "*[[]homeassistant.core[]] Bus:Handling <Event *zwave*replace_failed_node*"],
         'fail2ban': ["*fail2ban.actions: WARNING * Ban *"],
         'mail': ["*Received mail from '*' for '*' with subject '*"]}
 # [nginx-404] Ignore 192.168.0.10 by ip
