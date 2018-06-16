@@ -12,6 +12,8 @@ to = mail_config['to']
 email_host = 'mail'
 email_port = 25
 
+files = json.loads(config.get("Watch files", "files", fallback="[]"))
+
 ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
 # https://stackoverflow.com/questions/2595119/python-glob-and-bracket-characters
 ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.padavan_tracker[]] Can't get connected "
@@ -37,14 +39,15 @@ ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.p
                                         "*[[]xiaomi_gateway[]] Non matching response. Expecting write_ack, but got read_ack",
                                         "*[[]xiaomi_gateway[]] Non matching response. Expecting read_ack, but got write_ack",
                                         # Ignore system_log_event event and mqtt service which sends this event to mqtt server
-                                        "*[[]homeassistant.core[]] Bus:Handling <Event *system_log_event*"],
-        'fail2ban': ["*fail2ban.actions: WARNING * Ban *"],
-        'mail': ["*Received mail from '*' for '*' with subject '*"]}
+                                        "*[[]homeassistant.core[]] Bus:Handling <Event *system_log_event*",
+                                        # Z-wave component has service names and data with trigger words, filter them
+                                        "*INFO*[[]homeassistant.core[]]*service_registered*replace_failed_node*",
+                                        "*INFO*[[]homeassistant.core[]]*service_registered*remove_failed_node*",
+                                        "*INFO*[[]homeassistant.core[]]*state_changed*zwave._*is_failed*"],
+        'fail2ban': ["*fail2ban.actions: WARNING * Ban *"]}
 # [nginx-404] Ignore 192.168.0.10 by ip
 include = {'fail2ban': ['] Ignore ']}
 syslog_identifiers = ['duplicity']
-files_base = '/var/log/log-trigger/'
-files = ['asterisk_sms.log']
 
 def init_logging():
     global logger
@@ -88,7 +91,7 @@ def send_email(title, text):
 
 
 def is_ignore(info):
-    if info['CONTAINER_NAME'] in ['log-trigger']:
+    if info['CONTAINER_NAME'] in ['log-trigger', 'mail']:
         return True
     for container in include:
         for string in include[container]:
@@ -115,7 +118,7 @@ def parse(info):
 
 async def watch_file(path):
     logger.info('Track file: %s' % path)
-    f = open(files_base + path, mode='r', errors='replace')
+    f = open(path, mode='r', errors='replace')
     f.seek(0, os.SEEK_END)
     while True:
         line = f.readline()
@@ -124,14 +127,14 @@ async def watch_file(path):
             continue
         line = line.rstrip('\n')
         logger.info('New log in "%s": "%s"' % (path, line))
-        send_email('New log in file "%s"' % path, line)
+        send_email('New log in file "%s"' % path, "```\n%s\n```" % line)
 
 async def watch_files():
     futures = []
     for path in files:
         futures.append(watch_file(path))
-
-    await asyncio.wait(futures)
+    if len(futures):
+        await asyncio.wait(futures)
 
 def journald_reader():
     line = sys.stdin.readline()
@@ -156,8 +159,8 @@ def main():
     loop.add_reader(sys.stdin.fileno(), journald_reader)
 
     # Watch files
-    loop.run_until_complete(watch_files())
+    asyncio.ensure_future(watch_files(), loop=loop)
 
-    loop.close()
+    loop.run_forever()
 
 main()
