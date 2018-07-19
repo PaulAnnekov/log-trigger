@@ -43,7 +43,8 @@ ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.p
                                         # Z-wave component has service names and data with trigger words, filter them
                                         "*INFO*[[]homeassistant.core[]]*service_registered*replace_failed_node*",
                                         "*INFO*[[]homeassistant.core[]]*service_registered*remove_failed_node*",
-                                        "*INFO*[[]homeassistant.core[]]*state_changed*zwave._*is_failed*"],
+                                        "*INFO*[[]homeassistant.core[]]*state_changed*zwave._*is_failed*",
+                                        "*INFO*[[]homeassistant.core[]]*state_changed*vacuum.roomba*error*"]
         'fail2ban': ["*fail2ban.actions: WARNING * Ban *"]}
 # [nginx-404] Ignore 192.168.0.10 by ip
 include = {'fail2ban': ['] Ignore ']}
