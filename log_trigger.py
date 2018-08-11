@@ -47,7 +47,7 @@ ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.p
                                         # If robot stuck, "error" field with description will be added
                                         "*INFO*[[]homeassistant.core[]]*state_changed*vacuum.roomba*error*",
                                         # Happens on clean cycle end, it's ok to ignore, it will reconnect
-                                        "*WARNING*[[]roomba.roomba.Roomba[]] Unexpected Disconnect From Roomba ! - reconnecting"]
+                                        "*WARNING*[[]roomba.roomba.Roomba[]] Unexpected Disconnect From Roomba ! - reconnecting"],
         'fail2ban': ["*fail2ban.actions: WARNING * Ban *"]}
 # [nginx-404] Ignore 192.168.0.10 by ip
 include = {'fail2ban': ['] Ignore ']}
