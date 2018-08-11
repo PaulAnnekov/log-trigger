@@ -43,7 +43,7 @@ ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.p
                                         # Z-wave component has service names and data with trigger words, filter them
                                         "*INFO*[[]homeassistant.core[]]*service_registered*replace_failed_node*",
                                         "*INFO*[[]homeassistant.core[]]*service_registered*remove_failed_node*",
-                                        "*INFO*[[]homeassistant.core[]]*state_changed*zwave._*is_failed*",
+                                        "*INFO*[[]homeassistant.core[]]*state_changed*zwave.*is_failed*",
                                         # If robot stuck, "error" field with description will be added
                                         "*INFO*[[]homeassistant.core[]]*state_changed*vacuum.roomba*error*",
                                         # Happens on clean cycle end, it's ok to ignore, it will reconnect
