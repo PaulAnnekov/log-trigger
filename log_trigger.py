@@ -16,7 +16,7 @@ files = json.loads(config.get("Watch files", "files", fallback="[]"))
 
 ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
 # https://stackoverflow.com/questions/2595119/python-glob-and-bracket-characters
-ignore = {'smarthome_home_assistant_1': ["*[[]roomba.roomba.Roomba[]]*\"error\":0,*",
+ignore = {'home_assistant': ["*[[]roomba.roomba.Roomba[]]*\"error\":0,*",
                                         "*[[]homeassistant.helpers.entity[]] Update of * is taking over 10 seconds",
                                         "*[[]homeassistant.components.http[]] Serving /api/error/all to*",
                                         "*[[]homeassistant.components.emulated_hue[]] When targeting Google Home, listening port has to be port 80",
@@ -35,13 +35,19 @@ ignore = {'smarthome_home_assistant_1': ["*[[]roomba.roomba.Roomba[]]*\"error\":
                                         # http auth gives this warning if you don't use password
 					"*WARNING*[[]homeassistant.components.http[]] You have been advised to set http.api_password.",
     					# HA complains about custom components
-  					"*WARNING*[[]homeassistant.loader[]] You are using a custom component for * which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you do experience issues with Home Assistant.",
+  					"*WARNING*[[]homeassistant.loader[]] You are using a custom integration for * which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you do experience issues with Home Assistant.",
                                         # Bug https://github.com/home-assistant/home-assistant/issues/17408
                                         "*WARNING*[[]homeassistant.components.binary_sensor.xiaomi_aqara[]] Unsupported movement_type detected: None",
                                         # Called by UI when you open https://smart.home.annekov.com/dev-info page
-                                        "*INFO*[[]homeassistant.components.http.view[]] Serving /api/error/all to * (auth: True)"],
+                                        "*INFO*[[]homeassistant.components.http.view[]] Serving /api/error/all to * (auth: True)",
+                                        # When tuya servers are down
+                                        "*WARNING*[[]tuyaha.tuyaapi[]] request error, status code is 5*, device *",
+                                        # Sometimes xiaomi gateway looses connection to wifi
+                                        "*ERROR*[[]xiaomi_gateway[]] Cannot connect to Gateway",
+                                        "*ERROR*[[]xiaomi_gateway[]] No data in response from hub None"],
         # Error on start after reboot
-        'smarthome_mosquitto_1': ["*: Socket error on client <unknown>, disconnecting."],
+        'mosquitto': ["*: Socket error on client <unknown>, disconnecting."],
+        'syncthing': ["* INFO: Failed to exchange Hello messages with * at *: EOF"],
         # Error on start. Can be safely ignored
         'letsencrypt': ["*activation of module imklog failed*"],
         # Warnings on start that we can safely ignore
@@ -62,8 +68,9 @@ ignore = {'smarthome_home_assistant_1': ["*[[]roomba.roomba.Roomba[]]*\"error\":
                    "*Failed to load container mount *: mount does not exist*",
                    "*Failed to load container dc8bc204726549661c57f60aceac794c3538d842c0eae0477a455c32ff2da053: open *: no such file or directory*",
                    "*No such container: 600739b5e323ff2153b50377761957bc43475449d61c309c6301716c4cc19096*",
-                   "*Couldn't run auplink before unmount *: signal: segmentation fault (core dumped)*"
-        ]}
+                   "*Couldn't run auplink before unmount *: signal: segmentation fault (core dumped)*"],
+        'dashboard': ["[[]dashboard: main[]] [[]job: weather[]] * <error> executed with errors: HTTP error (500 Internal Server Error) (in scheduler.js:37)",
+                     "    at handleError (/home/dashboard/src/node_modules/atlasboard/lib/scheduler.js:37:29)"]}
 # [nginx-404] Ignore 192.168.0.10 by ip
 include = {'fail2ban': ['] Ignore ']}
 syslog_identifiers = ['duplicity', 'dockerd']
