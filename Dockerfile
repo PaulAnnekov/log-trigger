@@ -14,4 +14,6 @@ ADD log_trigger.py /usr/local/bin
 ADD log_trigger.conf /etc/log_trigger/log_trigger.conf
 
 # Flush buffered "print", will output stdout immediately
-CMD PYTHONUNBUFFERED="1" /usr/local/bin/log_trigger.py /etc/log_trigger/log_trigger.conf
+ENV PYTHONUNBUFFERED=1
+
+CMD ["/usr/local/bin/log_trigger.py", "/etc/log_trigger/log_trigger.conf"]

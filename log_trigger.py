@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import sys, json, logging, smtplib, configparser, re, fnmatch, time, os, asyncio
+import sys, json, signal, logging, smtplib, configparser, re, fnmatch, time, os, asyncio
 from email.mime.text import MIMEText
 
 logger = None
@@ -12,42 +12,68 @@ to = mail_config['to']
 email_host = 'mail'
 email_port = 25
 
+files = json.loads(config.get("Watch files", "files", fallback="[]"))
+
 ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
 # https://stackoverflow.com/questions/2595119/python-glob-and-bracket-characters
-ignore = {'smarthome_home_assistant_1': ["*[[]custom_components.device_tracker.padavan_tracker[]] Can't get connected "
-                                        "clients: Can't connect to router: HTTPConnectionPool(host='192.168.0.21', "
-                                        "port=80): Max retries exceeded with url: /Main_WStatus*_Content.asp (Caused "
-                                        "by ConnectTimeoutError(<requests.packages.urllib3.connection.HTTPConnection "
-                                        "object at *>, 'Connection to 192.168.0.21 timed out. "
-                                        "(connect timeout=1)'))*",
-                                        "*[[]custom_components.device_tracker.padavan_tracker[]] Can't get connected "
-                                        "clients: Some error during request: HTTPConnectionPool(host='192.168.0.21', "
-                                        "port=80): Read timed out. (read timeout=1)*",
-                                        "*[[]roomba.roomba.Roomba[]]*\"error\":0,*",
+ignore = {'home_assistant': ["*[[]roomba.roomba.Roomba[]]*\"error\":0,*",
                                         "*[[]homeassistant.helpers.entity[]] Update of * is taking over 10 seconds",
-                                        "*[[]PyXiaomiGateway[]] No data in response from hub None",
-                                        "*[[]PyXiaomiGateway[]] Non matching response. Expecting read_ack, but got write_ack",
-                                        "*[[]PyXiaomiGateway[]] Non matching response. Expecting write_ack, but got read_ack",
                                         "*[[]homeassistant.components.http[]] Serving /api/error/all to*",
                                         "*[[]homeassistant.components.emulated_hue[]] When targeting Google Home, listening port has to be port 80",
                                         "*[[]homeassistant.components.recorder[]] Ended unfinished session (*)",
                                         "*[[]homeassistant.components.updater[]] Running on 'dev', only analytics will be submitted",
-                                        "*[[]xiaomi_gateway[]] No data in response from hub None",
-                                        "*[[]xiaomi_gateway[]] Cannot connect to Gateway",
-                                        "*[[]xiaomi_gateway[]] Non matching response. Expecting write_ack, but got read_ack",
-                                        "*[[]xiaomi_gateway[]] Non matching response. Expecting read_ack, but got write_ack",
                                         # Ignore system_log_event event and mqtt service which sends this event to mqtt server
                                         "*[[]homeassistant.core[]] Bus:Handling <Event *system_log_event*",
-                                        "*[[]homeassistant.core[]] Bus:Handling <Event *zwave.*sentFailed*",
-                                        "*[[]homeassistant.core[]] Bus:Handling <Event *zwave*remove_failed_node*",
-                                        "*[[]homeassistant.core[]] Bus:Handling <Event *zwave*replace_failed_node*"],
+                                        # Z-wave component has service names and data with trigger words, filter them
+                                        "*INFO*[[]homeassistant.core[]]*service_registered*replace_failed_node*",
+                                        "*INFO*[[]homeassistant.core[]]*service_registered*remove_failed_node*",
+                                        "*INFO*[[]homeassistant.core[]]*state_changed*zwave.*is_failed*",
+                                        # If robot stuck, "error" field with description will be added
+                                        "*INFO*[[]homeassistant.core[]]*state_changed*vacuum.roomba*error*",
+                                        # Happens on clean cycle end, it's ok to ignore, it will reconnect
+                                        "*WARNING*[[]roomba.roomba.Roomba[]] Unexpected Disconnect From Roomba ! - reconnecting",
+                                        # http auth gives this warning if you don't use password
+					"*WARNING*[[]homeassistant.components.http[]] You have been advised to set http.api_password.",
+    					# HA complains about custom components
+  					"*WARNING*[[]homeassistant.loader[]] You are using a custom integration for * which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you do experience issues with Home Assistant.",
+                                        # Bug https://github.com/home-assistant/home-assistant/issues/17408
+                                        "*WARNING*[[]homeassistant.components.binary_sensor.xiaomi_aqara[]] Unsupported movement_type detected: None",
+                                        # Called by UI when you open https://smart.home.annekov.com/dev-info page
+                                        "*INFO*[[]homeassistant.components.http.view[]] Serving /api/error/all to * (auth: True)",
+                                        # When tuya servers are down
+                                        "*WARNING*[[]tuyaha.tuyaapi[]] request error, status code is 5*, device *",
+                                        # Sometimes xiaomi gateway looses connection to wifi
+                                        "*ERROR*[[]xiaomi_gateway[]] Cannot connect to Gateway",
+                                        "*ERROR*[[]xiaomi_gateway[]] No data in response from hub None"],
+        # Error on start after reboot
+        'mosquitto': ["*: Socket error on client <unknown>, disconnecting."],
+        'syncthing': ["* INFO: Failed to exchange Hello messages with * at *: EOF"],
+        # Error on start. Can be safely ignored
+        'letsencrypt': ["*activation of module imklog failed*"],
+        # Warnings on start that we can safely ignore
+        'owncloud_mysql': ["* 0 [[]Warning[]] '*' entry '*' ignored in --skip-name-resolve mode.",
+                          "* 0 [[]Warning[]] Failed to set up SSL because of the following SSL library error: SSL context is not usable without certificate and private key",
+                          "* 0 [[]Warning[]] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details)."],
         'fail2ban': ["*fail2ban.actions: WARNING * Ban *"],
-        'mail': ["*Received mail from '*' for '*' with subject '*"]}
+        # Log about message dispatch, contains message title, which can include "Error ..." word
+        'mail_alt': ["*<= * H=(localhost) [[]*[]] P=esmtp S=* T=* for *"],
+        # Warnings about unsupported features on init
+        'dockerd': ["*failed to load plugin io.containerd.snapshotter.v1.btrfs*",
+                   "*could not use snapshotter btrfs in metadata plugin*",
+                   "*Your kernel does not support swap memory limit*",
+                   "*Your kernel does not support cgroup rt period*",
+                   "*Your kernel does not support cgroup rt runtime*",
+                   # Errors related, probably, to some wrongly removed containers. Doesn't cause problems
+                   "*migrate container error: open /var/lib/docker/containers/dc8bc204726549661c57f60aceac794c3538d842c0eae0477a455c32ff2da053/config.json: no such file or directory*",
+                   "*Failed to load container mount *: mount does not exist*",
+                   "*Failed to load container dc8bc204726549661c57f60aceac794c3538d842c0eae0477a455c32ff2da053: open *: no such file or directory*",
+                   "*No such container: 600739b5e323ff2153b50377761957bc43475449d61c309c6301716c4cc19096*",
+                   "*Couldn't run auplink before unmount *: signal: segmentation fault (core dumped)*"],
+        'dashboard': ["[[]dashboard: main[]] [[]job: weather[]] * <error> executed with errors: HTTP error (500 Internal Server Error) (in scheduler.js:37)",
+                     "    at handleError (/home/dashboard/src/node_modules/atlasboard/lib/scheduler.js:37:29)"]}
 # [nginx-404] Ignore 192.168.0.10 by ip
 include = {'fail2ban': ['] Ignore ']}
-syslog_identifiers = ['duplicity']
-files_base = '/var/log/log-trigger/'
-files = ['asterisk_sms.log']
+syslog_identifiers = ['duplicity', 'dockerd']
 
 def init_logging():
     global logger
@@ -91,7 +117,7 @@ def send_email(title, text):
 
 
 def is_ignore(info):
-    if info['CONTAINER_NAME'] in ['log-trigger']:
+    if info['CONTAINER_NAME'] in ['log-trigger', 'mail']:
         return True
     for container in include:
         for string in include[container]:
@@ -118,7 +144,7 @@ def parse(info):
 
 async def watch_file(path):
     logger.info('Track file: %s' % path)
-    f = open(files_base + path, mode='r', errors='replace')
+    f = open(path, mode='r', errors='replace')
     f.seek(0, os.SEEK_END)
     while True:
         line = f.readline()
@@ -127,14 +153,14 @@ async def watch_file(path):
             continue
         line = line.rstrip('\n')
         logger.info('New log in "%s": "%s"' % (path, line))
-        send_email('New log in file "%s"' % path, line)
+        send_email('New log in file "%s"' % path, "```\n%s\n```" % line)
 
 async def watch_files():
     futures = []
     for path in files:
         futures.append(watch_file(path))
-
-    await asyncio.wait(futures)
+    if len(futures):
+        await asyncio.wait(futures)
 
 def journald_reader():
     line = sys.stdin.readline()
@@ -150,6 +176,10 @@ def journald_reader():
     send_email('Error on %s in container "%s"' % (info['_HOSTNAME'], info['CONTAINER_NAME']), "```\n%s\n```" %
     info['MESSAGE'])
 
+def signal_handler(loop):
+    loop.remove_signal_handler(signal.SIGTERM)
+    loop.stop()
+
 def main():
     init_logging()
 
@@ -159,8 +189,10 @@ def main():
     loop.add_reader(sys.stdin.fileno(), journald_reader)
 
     # Watch files
-    loop.run_until_complete(watch_files())
+    asyncio.ensure_future(watch_files(), loop=loop)
 
-    loop.close()
+    loop.add_signal_handler(signal.SIGTERM, signal_handler, loop)
+
+    loop.run_forever()
 
 main()
