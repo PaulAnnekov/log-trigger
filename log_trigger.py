@@ -3,65 +3,6 @@ import sys, json, signal, logging, smtplib, configparser, re, fnmatch, time, os,
 from email.mime.text import MIMEText
 
 ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
-# https://stackoverflow.com/questions/2595119/python-glob-and-bracket-characters
-# ignore = {'home_assistant': ["*[[]roomba.roomba.Roomba[]]*\"error\":0,*",
-#                                         "*[[]homeassistant.helpers.entity[]] Update of * is taking over 10 seconds",
-#                                         "*[[]homeassistant.components.http[]] Serving /api/error/all to*",
-#                                         "*[[]homeassistant.components.emulated_hue[]] When targeting Google Home, listening port has to be port 80",
-#                                         "*[[]homeassistant.components.recorder[]] Ended unfinished session (*)",
-#                                         "*[[]homeassistant.components.updater[]] Running on 'dev', only analytics will be submitted",
-#                                         # Ignore system_log_event event and mqtt service which sends this event to mqtt server
-#                                         "*[[]homeassistant.core[]] Bus:Handling <Event *system_log_event*",
-#                                         # Z-wave component has service names and data with trigger words, filter them
-#                                         "*INFO*[[]homeassistant.core[]]*service_registered*replace_failed_node*",
-#                                         "*INFO*[[]homeassistant.core[]]*service_registered*remove_failed_node*",
-#                                         "*INFO*[[]homeassistant.core[]]*state_changed*zwave.*is_failed*",
-#                                         # If robot stuck, "error" field with description will be added
-#                                         "*INFO*[[]homeassistant.core[]]*state_changed*vacuum.roomba*error*",
-#                                         # Happens on clean cycle end, it's ok to ignore, it will reconnect
-#                                         "*WARNING*[[]roomba.roomba.Roomba[]] Unexpected Disconnect From Roomba ! - reconnecting",
-#                                         # http auth gives this warning if you don't use password
-# 					"*WARNING*[[]homeassistant.components.http[]] You have been advised to set http.api_password.",
-#     					# HA complains about custom components
-#   					"*WARNING*[[]homeassistant.loader[]] You are using a custom integration for * which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you do experience issues with Home Assistant.",
-#                                         # Bug https://github.com/home-assistant/home-assistant/issues/17408
-#                                         "*WARNING*[[]homeassistant.components.binary_sensor.xiaomi_aqara[]] Unsupported movement_type detected: None",
-#                                         # Called by UI when you open https://smart.home.annekov.com/dev-info page
-#                                         "*INFO*[[]homeassistant.components.http.view[]] Serving /api/error/all to * (auth: True)",
-#                                         # When tuya servers are down
-#                                         "*WARNING*[[]tuyaha.tuyaapi[]] request error, status code is 5*, device *",
-#                                         # Sometimes xiaomi gateway looses connection to wifi
-#                                         "*ERROR*[[]xiaomi_gateway[]] Cannot connect to Gateway",
-#                                         "*ERROR*[[]xiaomi_gateway[]] No data in response from hub None"],
-#         # Error on start after reboot
-#         'mosquitto': ["*: Socket error on client <unknown>, disconnecting."],
-#         'syncthing': ["* INFO: Failed to exchange Hello messages with * at *: EOF"],
-#         # Error on start. Can be safely ignored
-#         'letsencrypt': ["*activation of module imklog failed*"],
-#         # Warnings on start that we can safely ignore
-#         'owncloud_mysql': ["* 0 [[]Warning[]] '*' entry '*' ignored in --skip-name-resolve mode.",
-#                           "* 0 [[]Warning[]] Failed to set up SSL because of the following SSL library error: SSL context is not usable without certificate and private key",
-#                           "* 0 [[]Warning[]] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details)."],
-#         'fail2ban': ["*fail2ban.actions: WARNING * Ban *"],
-#         # Log about message dispatch, contains message title, which can include "Error ..." word
-#         'mail_alt': ["*<= * H=(localhost) [[]*[]] P=esmtp S=* T=* for *"],
-#         # Warnings about unsupported features on init
-#         'dockerd': ["*failed to load plugin io.containerd.snapshotter.v1.btrfs*",
-#                    "*could not use snapshotter btrfs in metadata plugin*",
-#                    "*Your kernel does not support swap memory limit*",
-#                    "*Your kernel does not support cgroup rt period*",
-#                    "*Your kernel does not support cgroup rt runtime*",
-#                    # Errors related, probably, to some wrongly removed containers. Doesn't cause problems
-#                    "*migrate container error: open /var/lib/docker/containers/dc8bc204726549661c57f60aceac794c3538d842c0eae0477a455c32ff2da053/config.json: no such file or directory*",
-#                    "*Failed to load container mount *: mount does not exist*",
-#                    "*Failed to load container dc8bc204726549661c57f60aceac794c3538d842c0eae0477a455c32ff2da053: open *: no such file or directory*",
-#                    "*No such container: 600739b5e323ff2153b50377761957bc43475449d61c309c6301716c4cc19096*",
-#                    "*Couldn't run auplink before unmount *: signal: segmentation fault (core dumped)*"],
-#         'dashboard': ["[[]dashboard: main[]] [[]job: weather[]] * <error> executed with errors: HTTP error (500 Internal Server Error) (in scheduler.js:37)",
-#                      "    at handleError (/home/dashboard/src/node_modules/atlasboard/lib/scheduler.js:37:29)"]}
-# [nginx-404] Ignore 192.168.0.10 by ip
-# include = {'fail2ban': ['] Ignore ']}
-# syslog_identifiers = ['duplicity', 'dockerd']
 
 class LogTrigger:
 
@@ -70,7 +11,7 @@ class LogTrigger:
 
         self.mail_config = dict(config.items('Mail'))
         self.sender_name = self.mail_config.get('sender_name') or 'Log Trigger'
-        self.sender_email = self.mail_config.get('sender_email') or socket.gethostname()
+        self.sender_email = self.mail_config.get('sender_email') or 'log-trigger@%s' % socket.gethostname()
         self.to = self.mail_config['to']
         self.mail_server_host = self.mail_config['server_host']
         self.mail_server_port = self.mail_config.get('server_port') or 25

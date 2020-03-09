@@ -1,14 +1,4 @@
-FROM ubuntu:16.04
-
-# Set noninteractive mode for apt-get
-ENV DEBIAN_FRONTEND noninteractive
-# logging module requires to properly handle unicode strings
-# https://github.com/hangoutsbot/hangoutsbot/issues/470#issuecomment-169845872
-# https://askubuntu.com/a/828010
-ENV LANG C.UTF-8
-
-RUN apt-get update
-RUN apt-get -qqy install python3
+FROM python:3.8.2-alpine3.11
 
 ADD log_trigger.py /usr/local/bin
 ADD log_trigger.conf /etc/log_trigger/log_trigger.conf

@@ -1,6 +1,7 @@
 from log_trigger import LogTrigger
 
-def test_simple(monkeypatch, patch_smtp, config):
+def test_generic_match_must_send(monkeypatch, patch_smtp, config):
+    """Message matches generic matcher, must send an email"""
     config['Main'] = {
         'generic_erroneous_match': 'error|exception'
     }
@@ -31,7 +32,8 @@ error
     )
 
 
-def test_no_error(monkeypatch, patch_smtp, config):
+def test_generic_no_match_must_ignore(monkeypatch, patch_smtp, config):
+    """Message doesn't match generic matcher, should ignore"""
     config['Main'] = {
         'generic_erroneous_match': 'error|exception'
     }
@@ -47,8 +49,9 @@ def test_no_error(monkeypatch, patch_smtp, config):
     assert log_trigger.journald_reader() == False
     log_trigger.server.sendmail.assert_not_called()
 
-# Message matches generic matcher, but doesn't match level matcher, should ignore
+
 def test_ignore_per_service_level_matcher(monkeypatch, patch_smtp, config):
+    """Message matches generic matcher, but doesn't match level matcher, should ignore"""
     config['Main'] = {
         'generic_erroneous_match': 'error|exception',
     }
@@ -69,8 +72,8 @@ def test_ignore_per_service_level_matcher(monkeypatch, patch_smtp, config):
     log_trigger.server.sendmail.assert_not_called()
 
 
-# Message matches level matcher, must send an email
 def test_use_per_service_level_matcher(monkeypatch, patch_smtp, config):
+    """Message matches level matcher, must send an email"""
     config['Levels'] = {
         'levels_match_home_assistant': '.* (DEBUG|INFO|WARNING|ERROR|CRITICAL) .*',
         'erroneous_levels_home_assistant': 'WARNING,ERROR,CRITICAL'
@@ -102,7 +105,8 @@ To: %s
     )
 
 
-def test_ignore(monkeypatch, patch_smtp, config):
+def test_level_match_but_ignore_exists_must_ignore(monkeypatch, patch_smtp, config):
+    """Message matches level matcher, but it's set to be ignored, should not send an email"""
     config['Levels'] = {
         'levels_match_home_assistant': '.* (DEBUG|INFO|WARNING|ERROR|CRITICAL) .*',
         'erroneous_levels_home_assistant': 'WARNING,ERROR,CRITICAL'
@@ -123,8 +127,8 @@ def test_ignore(monkeypatch, patch_smtp, config):
     log_trigger.server.sendmail.assert_not_called()
 
 
-# Message matches always include, should send email
-def test_always_include(monkeypatch, patch_smtp, config):
+def test_generic_no_match_but_always_include_must_send(monkeypatch, patch_smtp, config):
+    """Message doesn't match generic error matcher, but matches always include, should send email"""
     config['Main'] = {
         'generic_erroneous_match': 'error|exception'
     }
