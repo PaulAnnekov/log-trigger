@@ -21,8 +21,8 @@ class LogTrigger:
         self.syslog_identifiers = self.main_config.get('syslog_identifiers_watch', '').split(',')
         self.ignored_containers = self.main_config.get('ignored_containers', '').split(',')
         
-        self.include = self.section_to_dict(config.items('Always Include'), 'match_')
-        self.ignore = self.gen_ignore_matchers(config.items('Ignore'))
+        self.include = self.gen_matchers_list(config.items('Always Include'))
+        self.ignore = self.gen_matchers_list(config.items('Ignore'))
         self.level_getters = self.gen_level_getters(config.items('Levels'))
         self.erroneous_levels = self.gen_erroneous_levels(config.items('Levels'))
         
@@ -41,8 +41,8 @@ class LogTrigger:
 
         return False
 
-    def is_service_message_ignore(self, service, message):
-        to_ignore = self.ignore.get(service)
+    def is_service_message_matches(self, matchers, service, message):
+        to_ignore = matchers.get(service)
         if to_ignore:
             for matcher in to_ignore:
                 if matcher.search(message):
@@ -57,13 +57,13 @@ class LogTrigger:
 
         return level_getters
 
-    def gen_ignore_matchers(self, section):
-        ignore_list = self.section_to_dict(section, 'match_')
-        ignore_matchers = {}
-        for service, matchers in ignore_list.items():
-            ignore_matchers[service] = list(map(re.compile, matchers.split('\n')))
+    def gen_matchers_list(self, section):
+        raw_matchers_list = self.section_to_dict(section, 'match_')
+        matchers_list = {}
+        for service, matchers in raw_matchers_list.items():
+            matchers_list[service] = list(map(re.compile, matchers.split('\n')))
 
-        return ignore_matchers
+        return matchers_list
 
     def gen_erroneous_levels(self, section):
         erroneous_levels = self.section_to_dict(section, 'erroneous_levels_')
@@ -127,12 +127,10 @@ class LogTrigger:
         if info['CONTAINER_NAME'] in self.ignored_containers:
             self.logger.debug('Ignore, ignored containers (%s)' % info['CONTAINER_NAME'])
             return True
-        for container in self.include:
-            for string in self.include[container]:
-                if string in info['MESSAGE']:
-                    self.logger.debug("Don't ignore, always include (%s)" % string)
-                    return False
-        if self.is_service_message_ignore(info['CONTAINER_NAME'], info['MESSAGE']):
+        if self.is_service_message_matches(self.include, info['CONTAINER_NAME'], info['MESSAGE']):
+            self.logger.debug("Don't ignore, always include")
+            return False
+        if self.is_service_message_matches(self.ignore, info['CONTAINER_NAME'], info['MESSAGE']):
             self.logger.debug('Ignore, per-container matcher')
             return True
         if not self.is_erroneous_message(info['CONTAINER_NAME'], info['MESSAGE']):

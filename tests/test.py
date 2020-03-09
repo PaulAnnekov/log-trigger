@@ -133,7 +133,7 @@ def test_generic_no_match_but_always_include_must_send(monkeypatch, patch_smtp, 
         'generic_erroneous_match': 'error|exception'
     }
     config['Always Include'] = {
-        'match_fail2ban': '] Ignore' 
+        'match_fail2ban': '] Ignore ' 
     }
 
     container_name = 'fail2ban'
