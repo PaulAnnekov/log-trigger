@@ -127,6 +127,44 @@ def test_level_match_but_ignore_exists_must_ignore(monkeypatch, patch_smtp, conf
     log_trigger.server.sendmail.assert_not_called()
 
 
+def test_must_skip_empty_ignore(monkeypatch, patch_smtp, config):
+    """Message matches level matcher, but config contains an empty ignore matcher, should still send an email"""
+    config['Levels'] = {
+        'levels_match_home_assistant': '.* (DEBUG|INFO|WARNING|ERROR|CRITICAL) .*',
+        'erroneous_levels_home_assistant': 'WARNING,ERROR,CRITICAL'
+    }
+    config['Ignore'] = {
+        # here first line is an empty matcher
+        'match_home_assistant': """
+\\[test\\] test."""
+    }
+
+    container_name = 'home_assistant'
+
+    monkeypatch.setattr('sys.stdin.readline', lambda: '{"CONTAINER_NAME": "%s", "MESSAGE": "2020-02-23 04:27:03 WARNING (MainThread) [homeassistant.components.vacuum] Platform roomba not ready yet. Retrying in 180 seconds.", "_HOSTNAME": "test_host"}' % container_name)
+    
+    log_trigger = LogTrigger(config)
+    log_trigger.init_logging()
+    log_trigger.server_reconnect()
+
+    assert log_trigger.journald_reader() == None
+    log_trigger.server.sendmail.assert_called_once_with(
+        log_trigger.server, 
+        config['Mail']['sender_email'], 
+        config['Mail']['to'], 
+        """Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Subject: Error on %s in container "%s"
+From: Log Trigger <%s>
+To: %s
+
+```
+2020-02-23 04:27:03 WARNING (MainThread) [homeassistant.components.vacuum] Platform roomba not ready yet. Retrying in 180 seconds.
+```""" % (config['Mail']['server_host'], container_name, config['Mail']['sender_email'], config['Mail']['to'])
+    )
+
+
 def test_generic_no_match_but_always_include_must_send(monkeypatch, patch_smtp, config):
     """Message doesn't match generic error matcher, but matches always include, should send email"""
     config['Main'] = {

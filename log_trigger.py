@@ -61,7 +61,7 @@ class LogTrigger:
         raw_matchers_list = self.section_to_dict(section, 'match_')
         matchers_list = {}
         for service, matchers in raw_matchers_list.items():
-            matchers_list[service] = list(map(re.compile, matchers.split('\n')))
+            matchers_list[service] = list(map(re.compile, filter(lambda s: s, matchers.split('\n'))))
 
         return matchers_list
 
