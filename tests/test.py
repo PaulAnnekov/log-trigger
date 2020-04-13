@@ -1,10 +1,10 @@
 from log_trigger import LogTrigger
 
-def test_generic_match_must_send(monkeypatch, patch_smtp, config):
+def test_generic_match_must_send(monkeypatch, patch_smtp, gen_config):
     """Message matches generic matcher, must send an email"""
-    config['Main'] = {
-        'generic_erroneous_match': 'error|exception'
-    }
+    config = gen_config("""[Main]
+generic_erroneous_match=error|exception
+""")
 
     container_name = 'test_container'
 
@@ -32,11 +32,11 @@ error
     )
 
 
-def test_generic_no_match_must_ignore(monkeypatch, patch_smtp, config):
+def test_generic_no_match_must_ignore(monkeypatch, patch_smtp, gen_config):
     """Message doesn't match generic matcher, should ignore"""
-    config['Main'] = {
-        'generic_erroneous_match': 'error|exception'
-    }
+    config = gen_config("""[Main]
+generic_erroneous_match=error|exception
+""")
 
     container_name = 'test_container'
 
@@ -50,15 +50,14 @@ def test_generic_no_match_must_ignore(monkeypatch, patch_smtp, config):
     log_trigger.server.sendmail.assert_not_called()
 
 
-def test_ignore_per_service_level_matcher(monkeypatch, patch_smtp, config):
+def test_ignore_per_service_level_matcher(monkeypatch, patch_smtp, gen_config):
     """Message matches generic matcher, but doesn't match level matcher, should ignore"""
-    config['Main'] = {
-        'generic_erroneous_match': 'error|exception',
-    }
-    config['Levels'] = {
-        'levels_match_syncthing': '.* (VERBOSE|DEBUG|INFO|WARNING): .*',
-        'erroneous_levels_syncthing': 'WARNING'
-    }
+    config = gen_config("""[Main]
+generic_erroneous_match=error|exception
+[Levels]
+levels_match_syncthing=.* (VERBOSE|DEBUG|INFO|WARNING): .*
+erroneous_levels_syncthing=WARNING
+""")
 
     container_name = 'syncthing'
 
@@ -72,12 +71,12 @@ def test_ignore_per_service_level_matcher(monkeypatch, patch_smtp, config):
     log_trigger.server.sendmail.assert_not_called()
 
 
-def test_use_per_service_level_matcher(monkeypatch, patch_smtp, config):
+def test_use_per_service_level_matcher(monkeypatch, patch_smtp, gen_config):
     """Message matches level matcher, must send an email"""
-    config['Levels'] = {
-        'levels_match_home_assistant': '.* (DEBUG|INFO|WARNING|ERROR|CRITICAL) .*',
-        'erroneous_levels_home_assistant': 'WARNING,ERROR,CRITICAL'
-    }
+    config = gen_config("""[Levels]
+levels_match_home_assistant=.* (DEBUG|INFO|WARNING|ERROR|CRITICAL) .*
+erroneous_levels_home_assistant=WARNING,ERROR,CRITICAL
+""")
 
     container_name = 'home_assistant'
 
@@ -105,19 +104,19 @@ To: %s
     )
 
 
-def test_level_match_but_ignore_exists_must_ignore(monkeypatch, patch_smtp, config):
+def test_level_match_but_ignore_exists_must_ignore(monkeypatch, patch_smtp, gen_config):
     """Message matches level matcher, but it's set to be ignored, should not send an email"""
-    config['Levels'] = {
-        'levels_match_home_assistant': '.* (DEBUG|INFO|WARNING|ERROR|CRITICAL) .*',
-        'erroneous_levels_home_assistant': 'WARNING,ERROR,CRITICAL'
-    }
-    config['Ignore'] = {
-        'match_home_assistant': '\\[homeassistant\\.components\\.vacuum\\] Platform roomba not ready yet\\. Retrying in .* seconds\\.'
-    }
+    config = gen_config("""[Levels]
+levels_match_home_assistant=.* (DEBUG|INFO|WARNING|ERROR|CRITICAL) .*
+erroneous_levels_home_assistant=WARNING,ERROR,CRITICAL
+
+[Ignore]
+match_home_assistant=ERROR.*\\[xiaomi_gateway\\] No data in response from hub None
+""")
 
     container_name = 'home_assistant'
 
-    monkeypatch.setattr('sys.stdin.readline', lambda: '{"CONTAINER_NAME": "%s", "MESSAGE": "2020-02-23 04:27:03 WARNING (MainThread) [homeassistant.components.vacuum] Platform roomba not ready yet. Retrying in 180 seconds.", "_HOSTNAME": "test_host"}' % container_name)
+    monkeypatch.setattr('sys.stdin.readline', lambda: '{"CONTAINER_NAME": "%s", "MESSAGE": "2020-04-13 23:18:10 ERROR (SyncWorker_11) [xiaomi_gateway] No data in response from hub None", "_HOSTNAME": "test_host"}' % container_name)
     
     log_trigger = LogTrigger(config)
     log_trigger.init_logging()
@@ -127,17 +126,17 @@ def test_level_match_but_ignore_exists_must_ignore(monkeypatch, patch_smtp, conf
     log_trigger.server.sendmail.assert_not_called()
 
 
-def test_must_skip_empty_ignore(monkeypatch, patch_smtp, config):
+def test_must_skip_empty_ignore(monkeypatch, patch_smtp, gen_config):
     """Message matches level matcher, but config contains an empty ignore matcher, should still send an email"""
-    config['Levels'] = {
-        'levels_match_home_assistant': '.* (DEBUG|INFO|WARNING|ERROR|CRITICAL) .*',
-        'erroneous_levels_home_assistant': 'WARNING,ERROR,CRITICAL'
-    }
-    config['Ignore'] = {
-        # here first line is an empty matcher
-        'match_home_assistant': """
-\\[test\\] test."""
-    }
+    config = gen_config("""[Levels]
+levels_match_home_assistant=.* (DEBUG|INFO|WARNING|ERROR|CRITICAL) .*
+erroneous_levels_home_assistant=WARNING,ERROR,CRITICAL
+
+[Ignore]
+# here first line is an empty matcher
+match_home_assistant=
+    \\[test\\] test.
+""")
 
     container_name = 'home_assistant'
 
@@ -165,14 +164,14 @@ To: %s
     )
 
 
-def test_generic_no_match_but_always_include_must_send(monkeypatch, patch_smtp, config):
+def test_generic_no_match_but_always_include_must_send(monkeypatch, patch_smtp, gen_config):
     """Message doesn't match generic error matcher, but matches always include, should send email"""
-    config['Main'] = {
-        'generic_erroneous_match': 'error|exception'
-    }
-    config['Always Include'] = {
-        'match_fail2ban': '] Ignore ' 
-    }
+    config = gen_config("""[Main]
+generic_erroneous_match=error|exception
+
+[Always Include]
+match_fail2ban=] Ignore 
+""")
 
     container_name = 'fail2ban'
 
