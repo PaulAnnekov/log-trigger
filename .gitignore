@@ -7,3 +7,6 @@ gen
 .idea
 log_trigger.conf
 __pycache__
+state/*
+
+!.gitkeep

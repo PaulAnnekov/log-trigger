@@ -8,9 +8,9 @@ generic_erroneous_match=error|exception
 
     container_name = 'test_container'
 
-    monkeypatch.setattr('sys.stdin.readline', lambda: '{"CONTAINER_NAME": "%s", "MESSAGE": "error", "_HOSTNAME": "test_host"}' % container_name)
+    monkeypatch.setattr('sys.stdin.readline', lambda: '{"CONTAINER_NAME": "%s", "MESSAGE": "error", "_HOSTNAME": "test_host", "__MONOTONIC_TIMESTAMP": "123", "_BOOT_ID": "jkha123"}' % container_name)
     
-    log_trigger = LogTrigger(config)
+    log_trigger = LogTrigger(config, 'last_state.json')
     log_trigger.init_logging()
     log_trigger.server_reconnect()
 
@@ -40,9 +40,9 @@ generic_erroneous_match=error|exception
 
     container_name = 'test_container'
 
-    monkeypatch.setattr('sys.stdin.readline', lambda: '{"CONTAINER_NAME": "%s", "MESSAGE": "INFO", "_HOSTNAME": "test_host"}' % container_name)
+    monkeypatch.setattr('sys.stdin.readline', lambda: '{"CONTAINER_NAME": "%s", "MESSAGE": "INFO", "_HOSTNAME": "test_host", "__MONOTONIC_TIMESTAMP": "123", "_BOOT_ID": "jkha123"}' % container_name)
     
-    log_trigger = LogTrigger(config)
+    log_trigger = LogTrigger(config, 'last_state.json')
     log_trigger.init_logging()
     log_trigger.server_reconnect()
 
@@ -61,9 +61,9 @@ erroneous_levels_syncthing=WARNING
 
     container_name = 'syncthing'
 
-    monkeypatch.setattr('sys.stdin.readline', lambda: '{"CONTAINER_NAME": "%s", "MESSAGE": "[JTHR2] 19:13:24 INFO: Connection to 70CDAC6A-6144-11EA-BC55-0242AC130003 at [::]:22000-75.123.123.1232:22000/quic-client/TLS1.3-TLS_AES_128_GCM_SHA256 closed: reading length: NO_ERROR: No recent network activity", "_HOSTNAME": "test_host"}' % container_name)
+    monkeypatch.setattr('sys.stdin.readline', lambda: '{"CONTAINER_NAME": "%s", "MESSAGE": "[JTHR2] 19:13:24 INFO: Connection to 70CDAC6A-6144-11EA-BC55-0242AC130003 at [::]:22000-75.123.123.1232:22000/quic-client/TLS1.3-TLS_AES_128_GCM_SHA256 closed: reading length: NO_ERROR: No recent network activity", "_HOSTNAME": "test_host", "__MONOTONIC_TIMESTAMP": "123", "_BOOT_ID": "jkha123"}' % container_name)
     
-    log_trigger = LogTrigger(config)
+    log_trigger = LogTrigger(config, 'last_state.json')
     log_trigger.init_logging()
     log_trigger.server_reconnect()
 
@@ -80,9 +80,9 @@ erroneous_levels_home_assistant=WARNING,ERROR,CRITICAL
 
     container_name = 'home_assistant'
 
-    monkeypatch.setattr('sys.stdin.readline', lambda: '{"CONTAINER_NAME": "%s", "MESSAGE": "2020-02-23 03:52:16 ERROR (SyncWorker_9) [roomba.roomba] Error: [Errno 113] Host is unreachable", "_HOSTNAME": "test_host"}' % container_name)
+    monkeypatch.setattr('sys.stdin.readline', lambda: '{"CONTAINER_NAME": "%s", "MESSAGE": "2020-02-23 03:52:16 ERROR (SyncWorker_9) [roomba.roomba] Error: [Errno 113] Host is unreachable", "_HOSTNAME": "test_host", "__MONOTONIC_TIMESTAMP": "123", "_BOOT_ID": "jkha123"}' % container_name)
     
-    log_trigger = LogTrigger(config)
+    log_trigger = LogTrigger(config, 'last_state.json')
     log_trigger.init_logging()
     log_trigger.server_reconnect()
 
@@ -116,9 +116,9 @@ match_home_assistant=ERROR.*\\[xiaomi_gateway\\] No data in response from hub No
 
     container_name = 'home_assistant'
 
-    monkeypatch.setattr('sys.stdin.readline', lambda: '{"CONTAINER_NAME": "%s", "MESSAGE": "2020-04-13 23:18:10 ERROR (SyncWorker_11) [xiaomi_gateway] No data in response from hub None", "_HOSTNAME": "test_host"}' % container_name)
+    monkeypatch.setattr('sys.stdin.readline', lambda: '{"CONTAINER_NAME": "%s", "MESSAGE": "2020-04-13 23:18:10 ERROR (SyncWorker_11) [xiaomi_gateway] No data in response from hub None", "_HOSTNAME": "test_host", "__MONOTONIC_TIMESTAMP": "123", "_BOOT_ID": "jkha123"}' % container_name)
     
-    log_trigger = LogTrigger(config)
+    log_trigger = LogTrigger(config, 'last_state.json')
     log_trigger.init_logging()
     log_trigger.server_reconnect()
 
@@ -140,9 +140,9 @@ match_home_assistant=
 
     container_name = 'home_assistant'
 
-    monkeypatch.setattr('sys.stdin.readline', lambda: '{"CONTAINER_NAME": "%s", "MESSAGE": "2020-02-23 04:27:03 WARNING (MainThread) [homeassistant.components.vacuum] Platform roomba not ready yet. Retrying in 180 seconds.", "_HOSTNAME": "test_host"}' % container_name)
+    monkeypatch.setattr('sys.stdin.readline', lambda: '{"CONTAINER_NAME": "%s", "MESSAGE": "2020-02-23 04:27:03 WARNING (MainThread) [homeassistant.components.vacuum] Platform roomba not ready yet. Retrying in 180 seconds.", "_HOSTNAME": "test_host", "__MONOTONIC_TIMESTAMP": "123", "_BOOT_ID": "jkha123"}' % container_name)
     
-    log_trigger = LogTrigger(config)
+    log_trigger = LogTrigger(config, 'last_state.json')
     log_trigger.init_logging()
     log_trigger.server_reconnect()
 
@@ -175,9 +175,9 @@ match_fail2ban=] Ignore
 
     container_name = 'fail2ban'
 
-    monkeypatch.setattr('sys.stdin.readline', lambda: '{"CONTAINER_NAME": "%s", "MESSAGE": "2020-02-19 00:20:30,323 fail2ban.filter         [10]: INFO    [nginx-404] Ignore 172.17.0.1 by ip", "_HOSTNAME": "test_host"}' % container_name)
+    monkeypatch.setattr('sys.stdin.readline', lambda: '{"CONTAINER_NAME": "%s", "MESSAGE": "2020-02-19 00:20:30,323 fail2ban.filter         [10]: INFO    [nginx-404] Ignore 172.17.0.1 by ip", "_HOSTNAME": "test_host", "__MONOTONIC_TIMESTAMP": "123", "_BOOT_ID": "jkha123"}' % container_name)
     
-    log_trigger = LogTrigger(config)
+    log_trigger = LogTrigger(config, 'last_state.json')
     log_trigger.init_logging()
     log_trigger.server_reconnect()
 

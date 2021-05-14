@@ -6,8 +6,10 @@ ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
 
 class LogTrigger:
 
-    def __init__(self, config):
+    def __init__(self, config, last_state_file):
         self.server = None
+
+        self.last_state_file = last_state_file
 
         self.mail_config = dict(config.items('Mail'))
         self.sender_name = self.mail_config.get('sender_name') or 'Log Trigger'
@@ -27,6 +29,19 @@ class LogTrigger:
         self.erroneous_levels = self.gen_erroneous_levels(config.items('Levels'))
         
         self.files = json.loads(config.get("Watch files", "files", fallback="[]"))
+
+        self.last_state = self.last_state_get()
+
+    def last_state_get(self):
+        if not os.path.isfile(self.last_state_file):
+            return {}
+        with open(self.last_state_file) as json_file:
+            return json.load(json_file)
+
+    def last_state_save(self, boot_id, timestamp):
+        self.last_state = {'boot_id': boot_id, 'timestamp': timestamp}
+        with open(self.last_state_file, 'w+') as outfile:
+            json.dump(self.last_state, outfile)
 
     def is_erroneous_message(self, service, message):
         matcher = self.level_getters.get(service)
@@ -171,6 +186,12 @@ class LogTrigger:
     def journald_reader(self):
         line = sys.stdin.readline()
         info = json.loads(line)
+        boot_id = info.get('_BOOT_ID')
+        timestamp = int(info.get('__MONOTONIC_TIMESTAMP'))
+        if boot_id == self.last_state.get('boot_id') and timestamp < self.last_state.get('timestamp'):
+            self.logger.debug('Ignore, was already handled, looks like we restarted')
+            return False
+        self.last_state_save(boot_id, timestamp)
         if info.get('SYSLOG_IDENTIFIER') in self.syslog_identifiers:
             info['CONTAINER_NAME'] = info['SYSLOG_IDENTIFIER']
         if 'CONTAINER_NAME' not in info:
@@ -205,5 +226,5 @@ class LogTrigger:
 if __name__ == '__main__':
     config = configparser.ConfigParser()
     config.read(sys.argv[1])
-    log_trigger = LogTrigger(config)
+    log_trigger = LogTrigger(config, sys.argv[2])
     log_trigger.main()
