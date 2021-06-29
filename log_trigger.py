@@ -36,7 +36,11 @@ class LogTrigger:
         if not os.path.isfile(self.last_state_file):
             return {}
         with open(self.last_state_file) as json_file:
-            return json.load(json_file)
+            data = json_file.read()
+            if data:
+                return json.loads(data)
+            else: # may be empty on hard reset, when we truncated file but interrupted before write
+                return {}
 
     def last_state_save(self, boot_id, timestamp):
         self.last_state = {'boot_id': boot_id, 'timestamp': timestamp}
