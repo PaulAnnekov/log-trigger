@@ -6,10 +6,10 @@ ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
 
 class LogTrigger:
 
-    def __init__(self, config, last_state_file):
+    def __init__(self, config, cursor_file):
         self.server = None
 
-        self.last_state_file = last_state_file
+        self.cursor_file = cursor_file
 
         self.mail_config = dict(config.items('Mail'))
         self.sender_name = self.mail_config.get('sender_name') or 'Log Trigger'
@@ -30,22 +30,9 @@ class LogTrigger:
         
         self.files = json.loads(config.get("Watch files", "files", fallback="[]"))
 
-        self.last_state = self.last_state_get()
-
-    def last_state_get(self):
-        if not os.path.isfile(self.last_state_file):
-            return {}
-        with open(self.last_state_file) as json_file:
-            data = json_file.read()
-            if data:
-                return json.loads(data)
-            else: # may be empty on hard reset, when we truncated file but interrupted before write
-                return {}
-
-    def last_state_save(self, boot_id, timestamp):
-        self.last_state = {'boot_id': boot_id, 'timestamp': timestamp}
-        with open(self.last_state_file, 'w+') as outfile:
-            json.dump(self.last_state, outfile)
+    def cursor_save(self, cursor):
+        with open(self.cursor_file, 'w+') as outfile:
+            outfile.write(cursor)
 
     def is_erroneous_message(self, service, message):
         matcher = self.level_getters.get(service)
@@ -126,7 +113,10 @@ class LogTrigger:
 
     def server_reconnect(self):
         if self.server is not None:
-            self.server.quit()
+            try:
+                self.server.quit()
+            except:
+                self.logger.warning("Can't quit smtp server:\n%s. %s", sys.exc_info()[0], sys.exc_info()[1])    
         self.server = smtplib.SMTP(self.mail_server_host, self.mail_server_port)
         self.server.ehlo()
 
@@ -190,22 +180,20 @@ class LogTrigger:
     def journald_reader(self):
         line = sys.stdin.readline()
         info = json.loads(line)
-        boot_id = info.get('_BOOT_ID')
-        timestamp = int(info.get('__MONOTONIC_TIMESTAMP'))
-        if boot_id == self.last_state.get('boot_id') and timestamp < self.last_state.get('timestamp'):
-            self.logger.debug('Ignore, was already handled, looks like we restarted')
-            return False
-        self.last_state_save(boot_id, timestamp)
+        cursor = info.get('__CURSOR')
         if info.get('SYSLOG_IDENTIFIER') in self.syslog_identifiers:
             info['CONTAINER_NAME'] = info['SYSLOG_IDENTIFIER']
         if 'CONTAINER_NAME' not in info:
+            self.cursor_save(cursor)
             return False
         info = self.parse(info)
         if self.is_ignore(info):
+            self.cursor_save(cursor)
             return False
         self.logger.info('Error in container "%s": "%s"' % (info['CONTAINER_NAME'], info['MESSAGE']))
         self.send_email('Error on %s in container "%s"' % (info['_HOSTNAME'], info['CONTAINER_NAME']), "```\n%s\n```" %
             info['MESSAGE'])
+        self.cursor_save(cursor)
 
     def signal_handler(self, loop):
         loop.remove_signal_handler(signal.SIGTERM)
