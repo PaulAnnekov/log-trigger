@@ -1,0 +1,19 @@
+[Unit]
+Description=Log trigger
+Requires=docker.service
+After=docker.service
+
+[Service]
+Restart=always
+# replace "/home/user/log-trigger" with a correct path which contains "state" folder and "log_trigger.conf"
+ExecStartPre=-/usr/bin/docker stop log-trigger
+ExecStart=/bin/sh -c '/bin/journalctl --no-tail -o json --after-cursor=$(cat state/cursor) -f | /usr/bin/docker run -i \
+# "local" log driver is used to override "journald" driver, because we don't want to catch logs of ourselves 
+    --log-driver=local \ 
+    -v /home/user/log-trigger/state:/etc/log_trigger/state \
+    -v /home/user/log-trigger/log_trigger.conf:/etc/log_trigger/log_trigger.conf \
+    --name=log-trigger ghcr.io/paulannekov/log-trigger'
+ExecStop=-/usr/bin/docker stop log-trigger
+
+[Install]
+WantedBy=multi-user.target
