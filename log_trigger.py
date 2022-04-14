@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import sys, json, signal, logging, smtplib, configparser, re, fnmatch, time, os, asyncio, socket
 from email.mime.text import MIMEText
+from cysystemd.reader import JournalReader, JournalOpenMode
+from cysystemd.async_reader import AsyncJournalReader
 
-ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
+ansi_escape = re.compile(r'(\u009B|\u001B\[)[0-?]*[ -\/]*[@-~]')
 
 class LogTrigger:
 
@@ -31,8 +33,15 @@ class LogTrigger:
         self.files = json.loads(config.get("Watch files", "files", fallback="[]"))
 
     def cursor_save(self, cursor):
-        with open(self.cursor_file, 'w+') as outfile:
-            outfile.write(cursor)
+        with open(self.cursor_file, 'wb+') as file:
+            file.write(cursor)
+
+    def cursor_get(self):
+        try:
+            with open(self.cursor_file, 'rb') as file:
+                return file.read()
+        except OSError:
+            pass
 
     def is_erroneous_message(self, service, message):
         matcher = self.level_getters.get(service)
@@ -152,9 +161,8 @@ class LogTrigger:
     def parse(self, info):
         if not isinstance(info['MESSAGE'], list):
             return info
-        # journald converts message to utf-8 byte array, if it was coloured output from program
-        # convert it back to utf-8 string + remove colour codes
-        info['MESSAGE'] = ansi_escape.sub('', bytes(info['MESSAGE']).decode('utf-8'))
+        # if the output from program was coloured - remove colour codes
+        info['MESSAGE'] = ansi_escape.sub('', info['MESSAGE'])
         return info
 
     async def watch_file(self, path):
@@ -176,24 +184,41 @@ class LogTrigger:
             futures.append(self.watch_file(path))
         if len(futures):
             await asyncio.wait(futures)
+    
+    def journald_reader(self, loop):
+        # Tried async version (https://github.com/mosquito/cysystemd#id16), but it stops polling records in 2-3
+        # loop cycles, need to investigate
+        reader = JournalReader()
+        reader.open(JournalOpenMode.SYSTEM)
+        cursor = self.cursor_get()
+        if cursor:
+            reader.seek_cursor(cursor)
+        else:
+            reader.seek_tail() 
 
-    def journald_reader(self):
-        line = sys.stdin.readline()
-        info = json.loads(line)
-        cursor = info.get('__CURSOR')
-        if info.get('SYSLOG_IDENTIFIER') in self.syslog_identifiers:
-            info['CONTAINER_NAME'] = info['SYSLOG_IDENTIFIER']
-        if 'CONTAINER_NAME' not in info:
-            self.cursor_save(cursor)
-            return False
-        info = self.parse(info)
-        if self.is_ignore(info):
-            self.cursor_save(cursor)
-            return False
-        self.logger.info('Error in container "%s": "%s"' % (info['CONTAINER_NAME'], info['MESSAGE']))
-        self.send_email('Error on %s in container "%s"' % (info['_HOSTNAME'], info['CONTAINER_NAME']), "```\n%s\n```" %
-            info['MESSAGE'])
-        self.cursor_save(cursor)
+        poll_timeout = 255
+
+        while True:
+            # loop will be stopped by signal, need to stop this thread manually
+            if not loop.is_running():
+                return
+            reader.wait(poll_timeout)
+            for record in reader:
+                info = record.data
+                cursor = record.cursor
+                if info.get('SYSLOG_IDENTIFIER') in self.syslog_identifiers:
+                    info['CONTAINER_NAME'] = info['SYSLOG_IDENTIFIER']
+                if 'CONTAINER_NAME' not in info:
+                    self.cursor_save(cursor)
+                    continue
+                info = self.parse(info)
+                if self.is_ignore(info):
+                    self.cursor_save(cursor)
+                    continue
+                self.logger.info('Found error in service "%s": "%s". Sending an email' % (info['CONTAINER_NAME'], info['MESSAGE']))
+                self.send_email('Error on %s in container "%s"' % (info['_HOSTNAME'], info['CONTAINER_NAME']), "```\n%s\n```" %
+                    info['MESSAGE'])
+                self.cursor_save(cursor)
 
     def signal_handler(self, loop):
         loop.remove_signal_handler(signal.SIGTERM)
@@ -206,7 +231,7 @@ class LogTrigger:
         loop = asyncio.get_event_loop()
 
         # Watch journald
-        loop.add_reader(sys.stdin.fileno(), self.journald_reader)
+        asyncio.ensure_future(loop.run_in_executor(None, self.journald_reader, loop), loop=loop)
 
         # Watch files
         asyncio.ensure_future(self.watch_files(), loop=loop)
