@@ -1,12 +1,12 @@
 # Log trigger
 
-Consumes stdin in journald json format, watches for docker containers errors and sends emails.
+Watches for Docker container logs via journald and send emails on errors. 
 
 ## Features
 
-- watch journald format logs for docker logs
-  - can include specific non-docker logs too, e.g. to watch `dockerd` logs too
-  - can exclude some containers
+- watch journald for Docker container logs
+  - can include specific non-Docker logs, e.g. to watch `dockerd` daemon logs too
+  - can exclude some containers from monitoring
 - log matchers to filter error logs
 - configure log format per-container to match specific log levels
 - globs to ignore logs
