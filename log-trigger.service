@@ -7,12 +7,13 @@ After=docker.service
 Restart=always
 # replace "/home/user/log-trigger" with a correct path which contains "log_trigger.conf" file and will 
 # contain "cursor" file generated during runtime
-ExecStart=/bin/sh -c '/usr/bin/docker start log-trigger || /usr/bin/docker run -i \
+ExecStartPre=-/usr/bin/docker rm log-trigger
+ExecStart=/usr/bin/docker run -i \
 # "local" log driver is used to override "journald" driver, because we don't want to catch logs of ourselves 
     --log-driver=local \ 
     -v /home/user/log-trigger:/etc/log_trigger \
     -v /var/log/journal:/var/log/journal:ro \
-    --name=log-trigger ghcr.io/paulannekov/log-trigger'
+    --name=log-trigger ghcr.io/paulannekov/log-trigger
 ExecStop=-/usr/bin/docker stop log-trigger
 
 [Install]
