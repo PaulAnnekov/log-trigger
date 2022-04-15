@@ -159,8 +159,6 @@ class LogTrigger:
 
 
     def parse(self, info):
-        if not isinstance(info['MESSAGE'], list):
-            return info
         # if the output from program was coloured - remove colour codes
         info['MESSAGE'] = ansi_escape.sub('', info['MESSAGE'])
         return info
