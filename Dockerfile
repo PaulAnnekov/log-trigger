@@ -1,8 +1,11 @@
-FROM python:3.8.13-slim-bullseye
+FROM python:3.8.18-slim-bookworm as build
 
-RUN python3.8 -m pip install \
-   https://github.com/mosquito/cysystemd/releases/download/1.4.8/cysystemd-1.4.8-cp38-cp38-manylinux2014_x86_64.whl
+RUN apt update && apt install -yy build-essential libsystemd-dev
+# Need to build from sources to handle the bug in pre-built wheels: https://github.com/mosquito/cysystemd/issues/59
+RUN python3.8 -m pip install cysystemd --no-binary :all:
 
+FROM python:3.8.18-slim-bookworm
+COPY --from=build /usr/local/lib/python3.8/site-packages /usr/local/lib/python3.8/site-packages
 ADD log_trigger.py /usr/local/bin
 
 # Flush buffered "print", will output stdout immediately
